@@ -8,6 +8,7 @@
   align-items: center;
   justify-content: center;
   transition: border-color 0.3s ease;
+  margin: auto;
 }
 
 .dragging {
