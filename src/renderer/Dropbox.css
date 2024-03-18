@@ -1,0 +1,38 @@
+.drag-and-drop {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  width: 300px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s ease;
+}
+
+.dragging {
+  border-color: #ED7B3B;
+}
+
+.drag-and-drop-content {
+  display: flex;
+  text-align: center;
+  flex-direction: column;
+}
+
+.drag-and-drop-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.drag-and-drop-icon img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.drag-and-drop-text {
+  font-size: 18px;
+}
