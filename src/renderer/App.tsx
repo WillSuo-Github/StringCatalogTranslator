@@ -6,11 +6,12 @@ import Dropbox from './Dropbox';
 import Checkbox from './Checkbox';
 import APIKeyInput from './APIKeyInput';
 import Startbutton from './Startbutton';
+import OpenAITranslator from './OpenAITranslator'
 
 
 const MainApp: FC = () => {
-
   const [dropFile, setDropFile] = useState([File]);
+  const [apikey, setApikey] = useState<string>('');
 
   function handleDropComplete(files: File) {
     console.log('files:', files);
@@ -21,14 +22,16 @@ const MainApp: FC = () => {
   }
 
   function handleInputChange(value: string) {
-    console.log('value:', value);
+    setApikey(value);
   }
 
   const simulateAsyncTask = () => {
     return new Promise<void>((resolve) => {
-      setTimeout(() => {
+      let translator = new OpenAITranslator(apikey);
+      translator.translateText('hello', 'en', 'zh').then (result => {
+        console.log(result);
         resolve();
-      }, 3000); // 模拟3秒钟的延迟
+      });
     });
   };
 
