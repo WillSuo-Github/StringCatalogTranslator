@@ -6,15 +6,26 @@ import Dropbox from './Dropbox';
 import Checkbox from './Checkbox';
 import APIKeyInput from './APIKeyInput';
 import Startbutton from './Startbutton';
-import OpenAITranslator from './OpenAITranslator'
+import OpenAITranslator from '../main/OpenAITranslator'
 
+
+interface TranslationFile {
+  filePaths: string[];
+  openAIKey: string;
+  rewriteAll: boolean;
+}
+
+interface TranslationFileResponse {
+  success: boolean;
+  message: string;
+}
 
 const MainApp: FC = () => {
-  const [dropFile, setDropFile] = useState([File]);
+  const [dropFiles, setDropFiles] = useState<File[]>([]);
   const [apikey, setApikey] = useState<string>('');
 
-  function handleDropComplete(files: File) {
-    console.log('files:', files);
+  function handleDropComplete(files: [File]) {
+    setDropFiles(files);
   }
 
   function handleCheckboxChange(checked: boolean) {
@@ -25,19 +36,32 @@ const MainApp: FC = () => {
     setApikey(value);
   }
 
-  const simulateAsyncTask = () => {
+  function simulateAsyncTask() {
     return new Promise<void>((resolve) => {
-      let translator = new OpenAITranslator(apikey);
-      translator.translateText('hello', 'en', 'zh').then (result => {
-        console.log(result);
+      if (dropFiles.length > 0) {
+        let filePaths: string[] = dropFiles.map(file => file.path);
+
+        let translationFile: TranslationFile = {
+          filePaths: filePaths,
+          openAIKey: apikey,
+          rewriteAll: false
+        }
+        console.log('file:', filePaths);
+        window.electron.ipcRenderer.sendMessage('fileChannel', translationFile);
+        window.electron.ipcRenderer.once('fileChannel', (response: TranslationFileResponse) => {
+          console.log('response:', response);
+          resolve();
+        });
+      } else {
+        console.log('no file');
         resolve();
-      });
+      }
     });
   };
 
   return (
     <div>
-      <Dropbox dropComplete={ handleDropComplete } />
+      <Dropbox dropComplete={handleDropComplete} />
       <div className='APIKeyInputContainer'>
         <APIKeyInput placeholder='API Key' onChange={handleInputChange} />
         <Startbutton label='start' onClick={() => simulateAsyncTask()} />

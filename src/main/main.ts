@@ -14,6 +14,7 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import TranslationFileResponse, { OpenAITranslator, TranslationFile } from './OpenAITranslator';
 
 class AppUpdater {
   constructor() {
@@ -25,10 +26,15 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
+ipcMain.on('fileChannel', async (event, arg: TranslationFile) => {
+  console.log('fileChannel:', arg);
+  let response: TranslationFileResponse = {
+    success: true,
+    message: 'success'
+  };
+  let translator = new OpenAITranslator(arg.openAIKey);
+  event.reply('fileChannel', response);
+
 });
 
 if (process.env.NODE_ENV === 'production') {
@@ -78,6 +84,7 @@ const createWindow = async () => {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
         : path.join(__dirname, '../../.erb/dll/preload.js'),
+      nodeIntegration: true,
     },
   });
 
