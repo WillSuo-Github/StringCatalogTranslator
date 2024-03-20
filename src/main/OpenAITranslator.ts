@@ -1,6 +1,8 @@
 import { OpenAI } from 'openai';
 import * as fs from 'fs';
 import * as xml2js from 'xml2js';
+import path from 'path';
+import { ContextExclusionPlugin } from 'webpack';
 
 interface ChatCompletion {
     id: string;
@@ -40,9 +42,11 @@ class OpenAITranslator {
     }
 
 
-    async translateFiles(files: File[]): Promise<void> {
+    async translateFilePaths(filePaths: string[]): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            const promises = files.map((file) => this.translateFile(file));
+            const allXliffFiles = this.scanXliffFiles(filePaths);
+            console.log('allXliffFiles:', allXliffFiles);
+            const promises = allXliffFiles.map((path) => this.translateFilePath(path));
             Promise.all(promises)
                 .then((results) => {
                     resolve();
@@ -53,9 +57,103 @@ class OpenAITranslator {
         });
     }
 
-    private async translateFile(file: File): Promise<void> {
+    private scanXliffFiles(paths: string[]): string[] {
+        let xliffFiles: string[] = [];
+
+        // 递归扫描目录下的所有文件
+        const scanDirectory = (dir: string) => {
+            const files = fs.readdirSync(dir);
+            files.forEach(file => {
+                const filePath = path.join(dir, file);
+                const stat = fs.statSync(filePath);
+                if (stat.isDirectory()) {
+                    // 如果是目录，则递归扫描
+                    scanDirectory(filePath);
+                } else if (path.extname(filePath).toLowerCase() === '.xliff') {
+                    // 如果是 xliff 文件，则加入结果数组
+                    xliffFiles.push(filePath);
+                }
+            });
+        };
+
+        // 处理单个路径的函数
+        const processPath = (p: string) => {
+            const stat = fs.statSync(p);
+            if (stat.isDirectory()) {
+                scanDirectory(p);
+            } else if (path.extname(p).toLowerCase() === '.xliff') {
+                // 如果是 xliff 文件，则直接添加到结果数组
+                xliffFiles.push(p);
+            }
+        };
+
+        // 对每个路径进行处理
+        paths.forEach(processPath);
+
+        return xliffFiles;
+    };
+
+
+    async getAllXliffFiles(filePath: string): Promise<string[]> {
+        return new Promise<string[]>((resolve, reject) => {
+            const xliffFiles: string[] = [];
+
+            const traverseDirectory = (currentPath: string) => {
+                fs.readdir(currentPath, { withFileTypes: true }, async (err, files) => {
+                    if (err) {
+                        console.error('Failed to read directory:', err);
+                        reject(err);
+                        return;
+                    }
+
+                    for (const file of files) {
+                        const filePath = path.join(currentPath, file.name);
+                        if (file.isDirectory()) {
+                            // 如果是子目录，则递归遍历
+                            await traverseDirectory(filePath);
+                        } else if (this.isXliffFile(filePath)) {
+                            // 如果是 xliff 文件，则添加到数组
+                            console.log('file is xliff file', filePath, "xliffFiles", xliffFiles);
+                            xliffFiles.push(filePath);
+                        }
+                    }
+
+                    if (currentPath === filePath) {
+                        // 如果当前路径是初始目录路径，则表示遍历完成
+                        console.log('final Xliff files:', xliffFiles);
+                        resolve(xliffFiles);
+                    }
+                    console.log('currentPath:', currentPath, "filePath:", filePath);
+                });
+            };
+
+            try {
+                const stats = fs.statSync(filePath);
+                if (stats.isFile() && this.isXliffFile(filePath)) {
+                    // console.log("file is xliff file", filePath);
+                    xliffFiles.push(filePath);
+                    resolve(xliffFiles);
+                } else if (stats.isDirectory()) {
+                    // console.log("file is directory", filePath);
+                    traverseDirectory(filePath);
+                } else {
+                    console.log(`${filePath} is neither a xliff file nor a directory.`);
+                    reject(`${filePath} is neither a xliff file nor a directory.`);
+                }
+            } catch (err) {
+                console.error('Failed to get file stats:', err);
+                reject(err);
+            }
+        });
+    }
+
+    private isXliffFile(filePath: string): boolean {
+        return filePath.toLowerCase().endsWith('.xliff');
+    }
+
+    private async translateFilePath(filePath: string): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            fs.readFile(file.path, 'utf-8', (err, data) => {
+            fs.readFile(filePath, 'utf-8', (err, data) => {
                 if (err) {
                     console.error('Failed to read file:', err);
                     reject(err);
@@ -72,49 +170,67 @@ class OpenAITranslator {
 
                     // 提取 source 和语言信息
                     const files = result.xliff.file;
+                    const translationPromises: Promise<void>[] = [];
+
                     files.forEach((file: any) => {
-                        const sourceLanguage = file.$.sourceLanguage;
-                        const targetLanguage = file.$.targetLanguage;
+                        const sourceLanguage = file.$["source-language"];
+                        const targetLanguage = file.$["target-language"];
                         const transUnits = file.body[0]['trans-unit'];
                         transUnits.forEach((transUnit: any) => {
                             const sourceText = transUnit.source[0];
-                            const translation = ''; // 这里放置翻译逻辑，留空作为示例
-                            console.log('Source Text:', sourceText);
-                            console.log('Source Language:', sourceLanguage);
-                            console.log('Target Language:', targetLanguage);
+                            const translationPromise = this.translateText(sourceText, sourceLanguage, targetLanguage).then((translatedText) => {
+                                console.log('Translation:', translatedText);
+                                console.log('Source Text:', sourceText);
+                                console.log('Source Language:', sourceLanguage);
+                                console.log('Target Language:', targetLanguage);
 
-                            // 插入翻译结果到原始文件
-                            transUnit.translation = [{ _: translation }];
+                                const targetElement = {
+                                    '$': { state: 'translated' },
+                                    '_': translatedText  // 使用翻译后的文本
+                                };
+                                // 将 target 元素添加到 trans-unit 的同级中
+                                transUnit.target = [targetElement];
+                            });
+                            translationPromises.push(translationPromise);
                         });
                     });
 
-                    // 将修改后的 XML 转换为字符串
-                    const builder = new xml2js.Builder();
-                    const updatedXml = builder.buildObject(result);
+                    Promise.all(translationPromises).then(() => {
+                        // 将修改后的 XML 转换为字符串
+                        const builder = new xml2js.Builder();
+                        const updatedXml = builder.buildObject(result);
 
-                    // 将修改后的 XML 字符串写回文件
-                    fs.writeFile(file.path, updatedXml, (writeErr) => {
-                        if (writeErr) {
-                            console.error('Failed to write file:', writeErr);
-                            reject(writeErr);
-                        } else {
-                            console.log('File updated successfully.');
-                            resolve(updatedXml);
-                        }
-                    });
+                        // 将修改后的 XML 字符串写回文件
+                        console.log('Writing updated file...', updatedXml);
+                        fs.writeFile(filePath, updatedXml, (writeErr) => {
+                            if (writeErr) {
+                                console.error('Failed to write file:', writeErr);
+                                reject(writeErr);
+                            } else {
+                                console.log('File updated successfully.');
+                                resolve();
+                            }
+                        });
+                    }).catch(reject);
                 });
             });
         });
     }
 
 
-    private async translate(text: string, sourceLanguage: string, targetLanguage: string): Promise<string> {
+    private async translateText(text: string, sourceLanguage: string, targetLanguage: string): Promise<string> {
         try {
-            let messageContent = ` Please use the natural language codenamed ${targetLanguage} to express the content codenamed ${sourceLanguage} in this paragraph, and the direct output content does not need to be followed by semicolons and codes:
+            // let messageContent = ` Please use the natural language codenamed ${targetLanguage} to express the content codenamed ${sourceLanguage} in this paragraph, and the direct output content does not need to be followed by semicolons and codes:
+            // ~~~
+            // ${text}
+            // ~~~
+            // `;
+
+            let messageContent = `You are an expert translator, translate the following text to ${targetLanguage} directly without explanation.
             ~~~
             ${text}
             ~~~
-            `;
+            `
 
             const chatCompletion: ChatCompletion = await this.client.chat.completions.create({
                 messages: [{ role: 'user', content: messageContent }],

@@ -14,7 +14,8 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import TranslationFileResponse, { OpenAITranslator, TranslationFile } from './OpenAITranslator';
+import OpenAITranslator, { TranslationFileResponse, TranslationFile } from './OpenAITranslator';
+
 
 class AppUpdater {
   constructor() {
@@ -33,8 +34,15 @@ ipcMain.on('fileChannel', async (event, arg: TranslationFile) => {
     message: 'success'
   };
   let translator = new OpenAITranslator(arg.openAIKey);
-  event.reply('fileChannel', response);
-
+  console.log('translator:', translator);
+  try {
+    console.log('Translating files...', arg.filePaths);
+    await translator.translateFilePaths(arg.filePaths);
+    console.log('Translation completed.');
+    event.reply('fileChannel', response);
+  } catch (error) {
+    console.error('Translation failed:', error);
+  }
 });
 
 if (process.env.NODE_ENV === 'production') {

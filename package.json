@@ -105,7 +105,8 @@
     "openai": "latest",
     "fs": "latest",
     "xml2js": "latest",
-    "timers-browserify": "latest"
+    "timers-browserify": "latest",
+    "path": "latest"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
