@@ -152,8 +152,8 @@ class OpenAITranslator {
     }
 
     private async translateFilePath(filePath: string): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            fs.readFile(filePath, 'utf-8', (err, data) => {
+        return new Promise<void>(async (resolve, reject) => {
+            fs.readFile(filePath, 'utf-8', async (err, data) => {
                 if (err) {
                     console.error('Failed to read file:', err);
                     reject(err);
@@ -161,7 +161,7 @@ class OpenAITranslator {
                 }
 
                 // 解析 XML
-                xml2js.parseString(data, (parseErr: Error, result) => {
+                xml2js.parseString(data, async (parseErr: Error, result) => {
                     if (parseErr) {
                         console.error('Failed to parse XML:', parseErr);
                         reject(parseErr);
@@ -170,32 +170,32 @@ class OpenAITranslator {
 
                     // 提取 source 和语言信息
                     const files = result.xliff.file;
-                    const translationPromises: Promise<void>[] = [];
 
-                    files.forEach((file: any) => {
+                    for (const file of files) {
                         const sourceLanguage = file.$["source-language"];
                         const targetLanguage = file.$["target-language"];
                         const transUnits = file.body[0]['trans-unit'];
-                        transUnits.forEach((transUnit: any) => {
+
+                        for (const transUnit of transUnits) {
                             const sourceText = transUnit.source[0];
-                            const translationPromise = this.translateText(sourceText, sourceLanguage, targetLanguage).then((translatedText) => {
-                                console.log('Translation:', translatedText);
-                                console.log('Source Text:', sourceText);
-                                console.log('Source Language:', sourceLanguage);
-                                console.log('Target Language:', targetLanguage);
+                            const translationPromise = await this.translateText(sourceText, sourceLanguage, targetLanguage)
+                                .then(async (translatedText) => {
+                                    console.log('Translation:', translatedText);
+                                    console.log('Source Text:', sourceText);
+                                    console.log('Source Language:', sourceLanguage);
+                                    console.log('Target Language:', targetLanguage);
 
-                                const targetElement = {
-                                    '$': { state: 'translated' },
-                                    '_': translatedText  // 使用翻译后的文本
-                                };
-                                // 将 target 元素添加到 trans-unit 的同级中
-                                transUnit.target = [targetElement];
-                            });
-                            translationPromises.push(translationPromise);
-                        });
-                    });
+                                    const targetElement = {
+                                        '$': { state: 'translated' },
+                                        '_': translatedText  // 使用翻译后的文本
+                                    };
+                                    // 将 target 元素添加到 trans-unit 的同级中
+                                    transUnit.target = [targetElement];
+                                });
+                        }
+                    }
 
-                    Promise.all(translationPromises).then(() => {
+                    try {
                         // 将修改后的 XML 转换为字符串
                         const builder = new xml2js.Builder();
                         const updatedXml = builder.buildObject(result);
@@ -211,12 +211,13 @@ class OpenAITranslator {
                                 resolve();
                             }
                         });
-                    }).catch(reject);
+                    } catch (error) {
+                        reject(error);
+                    }
                 });
             });
         });
     }
-
 
     private async translateText(text: string, sourceLanguage: string, targetLanguage: string): Promise<string> {
         try {
@@ -226,7 +227,7 @@ class OpenAITranslator {
             // ~~~
             // `;
 
-            let messageContent = `You are an expert translator, translate the following text to ${targetLanguage} directly without explanation.
+            let messageContent = `You are an expert translator, i am translating text on a macos app, translate the following text to ${targetLanguage} directly without explanation, The result does not need to include prefixes, suffixes, or tildes, or ~~~.
             ~~~
             ${text}
             ~~~
