@@ -63,6 +63,8 @@ interface FileContent {
 
 
 class OpenAITranslator {
+    private client: OpenAI;
+
     constructor(apiKey: string) {
         this.client = new OpenAI({
             apiKey: apiKey,
@@ -70,27 +72,26 @@ class OpenAITranslator {
         });
     }
 
-    async translateStringFilePaths(filePaths: string[]): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            const allStringsFiles = this.scanFiles(filePaths, ".xcstrings");
-            console.log('allStringsFiles:', allStringsFiles);
-            const promises = allStringsFiles.map((path) => this.translateStringFilePath(path));
-            Promise.all(promises)
-                .then((results) => {
-                    resolve();
-                })
-                .catch((err) => {
-                    reject(err);
-                });
-        });
+    async translateStringFilePaths(filePaths: string[], progressCallback: (progress: string) => void): Promise<void> {
+        const allStringsFiles = this.scanFiles(filePaths, ".xcstrings");
+        console.log('allStringsFiles:', allStringsFiles);
+        for (const path of allStringsFiles) {
+            await this.translateStringFilePath(path, progressCallback);
+        }
     }
 
-    private async translateStringFilePath(filePath: string): Promise<void> {
+    private async translateStringFilePath(filePath: string, progressCallback: (progress: string) => void): Promise<void> {
         const fileContent: FileContent = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         let languageCodes = ["ar", "ca", "cs", "da", "de", "el", "es", "es-419", "fi", "fr", "fr-CA", "he", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "th", "tr", "uk", "vi", "zh-Hans", "zh-Hant", "zh-HK"]
         for (const key in fileContent.strings) {
             const stringInfo = fileContent.strings[key];
+            console.log('key:', key, "stringInfo", stringInfo);
             let sourceValue = "";
+
+            if (!stringInfo.localizations) {
+                stringInfo.localizations = {};
+            }
+
             if (stringInfo.localizations[fileContent.sourceLanguage]?.stringUnit.state === "new") {
                 sourceValue = stringInfo.localizations[fileContent.sourceLanguage]?.stringUnit.value || key;
             } else {
@@ -105,7 +106,7 @@ class OpenAITranslator {
                             value: await this.translateText(sourceValue, fileContent.sourceLanguage, langCode)
                         }
                     };
-                    console.log("translating:", sourceValue, "to", langCode);
+                    progressCallback(`translating: ${sourceValue} to ${langCode}`);
                 }
             }
         }
@@ -114,7 +115,7 @@ class OpenAITranslator {
 
         // 将更新后的文件内容写入到原文件中
         fs.writeFileSync(filePath, JSON.stringify(fileContent, null, 2));
-        console.log(`文件 ${filePath} 更新完成。`);
+        console.log(`file ${filePath} update complete。`);
     }
 
     async translateXliffFilePaths(filePaths: string[]): Promise<void> {
@@ -185,7 +186,7 @@ class OpenAITranslator {
                         const filePath = path.join(currentPath, file.name);
                         if (file.isDirectory()) {
                             // 如果是子目录，则递归遍历
-                            await traverseDirectory(filePath);
+                            traverseDirectory(filePath);
                         } else if (this.isXliffFile(filePath)) {
                             // 如果是 xliff 文件，则添加到数组
                             console.log('file is xliff file', filePath, "xliffFiles", xliffFiles);

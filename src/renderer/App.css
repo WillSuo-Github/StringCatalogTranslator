@@ -52,3 +52,11 @@ button:hover {
   justify-content: flex-start;
   width: 50%;
 }
+
+.tips {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 50px;
+}

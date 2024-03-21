@@ -6,23 +6,25 @@ import Dropbox from './Dropbox';
 import Checkbox from './Checkbox';
 import APIKeyInput from './APIKeyInput';
 import Startbutton from './Startbutton';
-import OpenAITranslator from '../main/OpenAITranslator'
 
 
-interface TranslationFile {
+export interface TranslationFile {
   filePaths: string[];
   openAIKey: string;
   rewriteAll: boolean;
 }
 
-interface TranslationFileResponse {
-  success: boolean;
+export interface TranslationFileResponse {
+  // "done", "in-progress", "error"
+  progress: string;
   message: string;
 }
 
 const MainApp: FC = () => {
   const [dropFiles, setDropFiles] = useState<File[]>([]);
   const [apikey, setApikey] = useState<string>('');
+  const [tips, setTips] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   function handleDropComplete(files: [File]) {
     setDropFiles(files);
@@ -36,7 +38,9 @@ const MainApp: FC = () => {
     setApikey(value);
   }
 
-  function simulateAsyncTask() {
+  function handleStartTranslation() {
+    startButtonLoading();
+
     return new Promise<void>((resolve) => {
       if (dropFiles.length > 0) {
         let filePaths: string[] = dropFiles.map(file => file.path);
@@ -48,9 +52,14 @@ const MainApp: FC = () => {
         }
         console.log('file:', filePaths);
         window.electron.ipcRenderer.sendMessage('fileChannel', translationFile);
-        window.electron.ipcRenderer.once('fileChannel', (response: TranslationFileResponse) => {
+        window.electron.ipcRenderer.on('fileChannel', (response: TranslationFileResponse) => {
           console.log('response:', response);
           resolve();
+          setTips(response.message);
+
+          if (response.progress === 'done') {
+            stopButtonLoading();
+          }
         });
       } else {
         console.log('no file');
@@ -59,12 +68,21 @@ const MainApp: FC = () => {
     });
   };
 
+  function stopButtonLoading() {
+    setLoading(false);
+  };
+
+  function startButtonLoading() {
+    setLoading(true);
+  }
+
   return (
     <div>
       <Dropbox dropComplete={handleDropComplete} />
+      <div className='tips'>{ tips }</div>
       <div className='APIKeyInputContainer'>
         <APIKeyInput placeholder='API Key' onChange={handleInputChange} />
-        <Startbutton label='start' onClick={() => simulateAsyncTask()} />
+        <Startbutton label='start' onClick={handleStartTranslation} loading={loading} />
       </div>
       <div className='checkboxContainer'>
         <div className='leftCheckboxContainer'>

@@ -14,8 +14,8 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import OpenAITranslator, { TranslationFileResponse, TranslationFile } from './OpenAITranslator';
-
+import OpenAITranslator from './OpenAITranslator';
+import { TranslationFileResponse , TranslationFile } from '../renderer/App';
 
 class AppUpdater {
   constructor() {
@@ -28,20 +28,32 @@ class AppUpdater {
 let mainWindow: BrowserWindow | null = null;
 
 ipcMain.on('fileChannel', async (event, arg: TranslationFile) => {
-  console.log('fileChannel:', arg);
-  let response: TranslationFileResponse = {
-    success: true,
-    message: 'success'
-  };
   let translator = new OpenAITranslator(arg.openAIKey);
-  console.log('translator:', translator);
+
+  const progressCallback = (progress: string) => {
+    console.log(progress); // 输出当前进度信息
+    let progressResponse: TranslationFileResponse = {
+      progress: 'in-progress',
+      message: progress
+    };
+    event.reply('fileChannel', progressResponse);
+  };
+
   try {
-    console.log('Translating files...', arg.filePaths);
-    await translator.translateStringFilePaths(arg.filePaths);
-    console.log('Translation completed.');
-    event.reply('fileChannel', response);
+    console.log('Start Translating files...', arg.filePaths);
+    await translator.translateStringFilePaths(arg.filePaths, progressCallback);
+    let completedResponse: TranslationFileResponse = {
+      progress: 'done',
+      message: 'Translation completed.'
+    };
+    event.reply('fileChannel', completedResponse);
   } catch (error) {
-    console.error('Translation failed:', error);
+    console.log('Translation failed.', error);
+    let errorResponse: TranslationFileResponse = {
+      progress: 'error',
+      message: 'Translation failed.'
+    };
+    event.reply('fileChannel', errorResponse);
   }
 });
 

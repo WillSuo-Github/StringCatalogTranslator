@@ -99,14 +99,14 @@
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.1.4",
+    "fs": "latest",
+    "openai": "latest",
+    "path": "latest",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.16.0",
-    "openai": "latest",
-    "fs": "latest",
-    "xml2js": "latest",
     "timers-browserify": "latest",
-    "path": "latest"
+    "xml2js": "latest"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
@@ -123,6 +123,7 @@
     "@types/react-test-renderer": "^18.0.1",
     "@types/terser-webpack-plugin": "^5.0.4",
     "@types/webpack-bundle-analyzer": "^4.6.0",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
     "browserslist-config-erb": "^0.0.3",

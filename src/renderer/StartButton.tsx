@@ -4,17 +4,15 @@ import './Startbutton.css';
 interface ButtonProps {
     label: string;
     onClick: () => Promise<void>;
+    loading: boolean; // 新增 loading prop
 }
 
-const Startbutton: React.FC<ButtonProps> = ({ label, onClick }) => {
-    const [loading, setLoading] = useState<boolean>(false);
-
+const Startbutton: React.FC<ButtonProps> = ({ label, onClick, loading }) => {
     const handleClick = async () => {
-        setLoading(true);
         try {
             await onClick();
-        } finally {
-            setLoading(false);
+        } catch (error) {
+            // 处理错误
         }
     };
 
