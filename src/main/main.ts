@@ -37,7 +37,7 @@ ipcMain.on('fileChannel', async (event, arg: TranslationFile) => {
   console.log('translator:', translator);
   try {
     console.log('Translating files...', arg.filePaths);
-    await translator.translateFilePaths(arg.filePaths);
+    await translator.translateStringFilePaths(arg.filePaths);
     console.log('Translation completed.');
     event.reply('fileChannel', response);
   } catch (error) {

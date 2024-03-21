@@ -32,6 +32,35 @@ interface Translation {
     targetLanguage: string;
 }
 
+interface Localization {
+    state: string;
+    value: string;
+}
+
+interface StringUnit {
+    stringUnit: Localization;
+}
+
+interface Localizations {
+    [key: string]: StringUnit;
+}
+
+interface StringInfo {
+    comment?: string;
+    extractionState?: string;
+    localizations: Localizations;
+}
+
+interface Strings {
+    [key: string]: StringInfo;
+}
+
+interface FileContent {
+    sourceLanguage: string;
+    strings: Strings;
+    version: string;
+}
+
 
 class OpenAITranslator {
     constructor(apiKey: string) {
@@ -41,12 +70,11 @@ class OpenAITranslator {
         });
     }
 
-
-    async translateFilePaths(filePaths: string[]): Promise<void> {
+    async translateStringFilePaths(filePaths: string[]): Promise<void> {
         return new Promise<void>((resolve, reject) => {
-            const allXliffFiles = this.scanXliffFiles(filePaths);
-            console.log('allXliffFiles:', allXliffFiles);
-            const promises = allXliffFiles.map((path) => this.translateFilePath(path));
+            const allStringsFiles = this.scanFiles(filePaths, ".xcstrings");
+            console.log('allStringsFiles:', allStringsFiles);
+            const promises = allStringsFiles.map((path) => this.translateStringFilePath(path));
             Promise.all(promises)
                 .then((results) => {
                     resolve();
@@ -57,7 +85,54 @@ class OpenAITranslator {
         });
     }
 
-    private scanXliffFiles(paths: string[]): string[] {
+    private async translateStringFilePath(filePath: string): Promise<void> {
+        const fileContent: FileContent = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        let languageCodes = ["ar", "ca", "cs", "da", "de", "el", "es", "es-419", "fi", "fr", "fr-CA", "he", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nb", "nl", "pl", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "th", "tr", "uk", "vi", "zh-Hans", "zh-Hant", "zh-HK"]
+        for (const key in fileContent.strings) {
+            const stringInfo = fileContent.strings[key];
+            let sourceValue = "";
+            if (stringInfo.localizations[fileContent.sourceLanguage]?.stringUnit.state === "new") {
+                sourceValue = stringInfo.localizations[fileContent.sourceLanguage]?.stringUnit.value || key;
+            } else {
+                sourceValue = key;
+            }
+
+            for (const langCode of languageCodes) {
+                if (!stringInfo.localizations[langCode]) {
+                    stringInfo.localizations[langCode] = {
+                        stringUnit: {
+                            state: "translated",
+                            value: await this.translateText(sourceValue, fileContent.sourceLanguage, langCode)
+                        }
+                    };
+                    console.log("translating:", sourceValue, "to", langCode);
+                }
+            }
+        }
+        // 输出更新后的文件内容
+        console.log(fileContent);
+
+        // 将更新后的文件内容写入到原文件中
+        fs.writeFileSync(filePath, JSON.stringify(fileContent, null, 2));
+        console.log(`文件 ${filePath} 更新完成。`);
+    }
+
+    async translateXliffFilePaths(filePaths: string[]): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const allXliffFiles = this.scanFiles(filePaths, ".xliff");
+            console.log('allXliffFiles:', allXliffFiles);
+            const promises = allXliffFiles.map((path) => this.translateXliffFilePath(path));
+            Promise.all(promises)
+                .then((results) => {
+                    resolve();
+                })
+                .catch((err) => {
+                    reject(err);
+                });
+        });
+    }
+
+    private scanFiles(paths: string[], fileExtension: string): string[] {
         let xliffFiles: string[] = [];
 
         // 递归扫描目录下的所有文件
@@ -69,7 +144,7 @@ class OpenAITranslator {
                 if (stat.isDirectory()) {
                     // 如果是目录，则递归扫描
                     scanDirectory(filePath);
-                } else if (path.extname(filePath).toLowerCase() === '.xliff') {
+                } else if (path.extname(filePath).toLowerCase() === fileExtension) {
                     // 如果是 xliff 文件，则加入结果数组
                     xliffFiles.push(filePath);
                 }
@@ -81,7 +156,7 @@ class OpenAITranslator {
             const stat = fs.statSync(p);
             if (stat.isDirectory()) {
                 scanDirectory(p);
-            } else if (path.extname(p).toLowerCase() === '.xliff') {
+            } else if (path.extname(p).toLowerCase() === fileExtension) {
                 // 如果是 xliff 文件，则直接添加到结果数组
                 xliffFiles.push(p);
             }
@@ -151,7 +226,7 @@ class OpenAITranslator {
         return filePath.toLowerCase().endsWith('.xliff');
     }
 
-    private async translateFilePath(filePath: string): Promise<void> {
+    private async translateXliffFilePath(filePath: string): Promise<void> {
         return new Promise<void>(async (resolve, reject) => {
             fs.readFile(filePath, 'utf-8', async (err, data) => {
                 if (err) {
@@ -221,13 +296,15 @@ class OpenAITranslator {
 
     private async translateText(text: string, sourceLanguage: string, targetLanguage: string): Promise<string> {
         try {
-            // let messageContent = ` Please use the natural language codenamed ${targetLanguage} to express the content codenamed ${sourceLanguage} in this paragraph, and the direct output content does not need to be followed by semicolons and codes:
-            // ~~~
-            // ${text}
-            // ~~~
-            // `;
+            if (this.isPureNumber(text)) {
+                return text;
+            } else if (text === "Tamer") {
+                return text;
+            } else if (text.length == 0) {
+                return text;
+            }
 
-            let messageContent = `You are an expert translator, i am translating text on a macos app, translate the following text to ${targetLanguage} directly without explanation, The result does not need to include prefixes, suffixes, or tildes, or ~~~.
+            let messageContent = `You are an expert translator, i am translating text on a macos app, my app name is Tamer, do not translate the Tamer word, translate the following text to ${targetLanguage} directly without explanation, The result does not need to include prefixes, suffixes, or tildes, or ~~~.
             ~~~
             ${text}
             ~~~
@@ -243,6 +320,11 @@ class OpenAITranslator {
             console.error('Error:', error);
             throw new Error(`Translation failed: ${error.message}`);
         }
+    }
+
+    private isPureNumber(str: string): boolean {
+        // 使用+运算符将字符串转换为数字，然后检查是否为NaN
+        return !isNaN(+str);
     }
 }
 
