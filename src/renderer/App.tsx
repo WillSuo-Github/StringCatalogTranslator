@@ -39,6 +39,14 @@ const MainApp: FC = () => {
   }
 
   function handleStartTranslation() {
+    if (apikey === '') {
+      setTips('Please input API key');
+      return;
+    } else if (dropFiles.length === 0) {
+      setTips('Please drop files');
+      return;
+    }
+
     startButtonLoading();
 
     return new Promise<void>((resolve) => {
