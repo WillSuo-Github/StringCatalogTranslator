@@ -37,3 +37,26 @@
 .drag-and-drop-text {
   font-size: 18px;
 }
+
+.icon-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.drag-and-drop {
+  position: relative;
+}
+
+
+.delete-button {
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  background-color: transparent;
+  /* 设置背景色为透明 */
+  border: none;
+  /* 移除边框 */
+  padding: 0;
+  /* 移除内边距 */
+}
