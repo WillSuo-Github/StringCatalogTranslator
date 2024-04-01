@@ -1,30 +1,11 @@
-import { OpenAI } from 'openai';
+import OpenAI, { ChatCompletion } from 'openai';
 import * as fs from 'fs';
 import * as xml2js from 'xml2js';
 import path from 'path';
 import { ContextExclusionPlugin } from 'webpack';
+// import ChatCompletion form openai
 
-interface ChatCompletion {
-    id: string;
-    object: string;
-    created: number;
-    model: string;
-    choices: {
-        index: number;
-        message: {
-            role: string;
-            content: string;
-        };
-        logprobs: null;
-        finish_reason: string;
-    }[];
-    usage: {
-        prompt_tokens: number;
-        completion_tokens: number;
-        total_tokens: number;
-    };
-    system_fingerprint: string;
-}
+
 
 interface Translation {
     source: string;
@@ -110,9 +91,6 @@ class OpenAITranslator {
                 }
             }
         }
-        // 输出更新后的文件内容
-        console.log(fileContent);
-
         // 将更新后的文件内容写入到原文件中
         fs.writeFileSync(filePath, JSON.stringify(fileContent, null, 2));
         console.log(`file ${filePath} update complete。`);
@@ -237,7 +215,7 @@ class OpenAITranslator {
                 }
 
                 // 解析 XML
-                xml2js.parseString(data, async (parseErr: Error, result) => {
+                xml2js.parseString(data, async (parseErr: Error | null, result) => {
                     if (parseErr) {
                         console.error('Failed to parse XML:', parseErr);
                         reject(parseErr);
@@ -305,7 +283,7 @@ class OpenAITranslator {
                 return text;
             }
 
-            let messageContent = `You are an expert translator, i am translating text on a macos app, my app name is Tamer, do not translate the Tamer word, translate the following text to ${targetLanguage} directly without explanation, The result does not need to include prefixes, suffixes, or tildes, or ~~~.
+            let messageContent = `You are an expert translator, i am translating text on a macos app, translate the following text to ${targetLanguage} directly without explanation, The result does not need to include prefixes, suffixes, or tildes, or ~~~.
             ~~~
             ${text}
             ~~~
@@ -315,11 +293,18 @@ class OpenAITranslator {
                 messages: [{ role: 'user', content: messageContent }],
                 model: 'gpt-3.5-turbo',
             });
+            console.log("chatCompletion:", chatCompletion)
             let result = chatCompletion.choices[0].message.content;
             return result;
-        } catch (error) {
-            console.error('Error:', error);
-            throw new Error(`Translation failed: ${error.message}`);
+        } catch (error: unknown) {
+            if (error instanceof Error) {
+                console.error('Error:', error);
+                throw new Error(`Translation failed: ${error.message}`);
+            } else {
+                // 处理非 Error 类型的错误
+                console.error('An unknown error occurred:', error);
+                throw new Error('An unknown error occurred');
+            }
         }
     }
 
