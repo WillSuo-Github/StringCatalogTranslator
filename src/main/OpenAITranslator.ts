@@ -277,8 +277,6 @@ class OpenAITranslator {
         try {
             if (this.isPureNumber(text)) {
                 return text;
-            } else if (text === "Tamer") {
-                return text;
             } else if (text.length == 0) {
                 return text;
             }
