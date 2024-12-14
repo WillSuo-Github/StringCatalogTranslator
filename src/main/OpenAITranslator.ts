@@ -30,6 +30,7 @@ interface StringInfo {
     comment?: string;
     extractionState?: string;
     localizations: Localizations;
+    shouldTranslate: boolean;
 }
 
 interface Strings {
@@ -69,6 +70,11 @@ class OpenAITranslator {
             console.log('key:', key, "stringInfo", stringInfo);
             let sourceValue = "";
 
+            if (stringInfo.shouldTranslate === false) {
+                console.log(`skip translating: ${key}`);
+                continue;
+            }
+
             if (!stringInfo.localizations) {
                 stringInfo.localizations = {};
             }
@@ -77,6 +83,11 @@ class OpenAITranslator {
                 sourceValue = stringInfo.localizations[fileContent.sourceLanguage]?.stringUnit.value || key;
             } else {
                 sourceValue = key;
+            }
+
+            if (sourceValue.length == 0) {
+                console.log(`skip translating: ${key}`);
+                continue;
             }
 
             for (const langCode of languageCodes) {
