@@ -295,10 +295,11 @@ class OpenAITranslator {
             let messageContent = `You are a professional translation expert, and I am internationalizing the translation for a desktop or mobile application I am developing myself. Please translate the following text directly into ${targetLanguage}, without including any prefixes, suffixes, tildes, or other additional characters.
             ${text}`
 
-            const chatCompletion: ChatCompletion = await this.client.chat.completions.create({
+            const chatCompletion: ChatCompletion =
+              await this.client.chat.completions.create({
                 messages: [{ role: 'user', content: messageContent }],
-                model: 'gpt-3.5-turbo',
-            });
+                model: 'gpt-4-turbo',
+              });
             console.log("chatCompletion:", chatCompletion)
             let result = chatCompletion.choices[0].message.content;
             return result;

@@ -3666,7 +3666,7 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) => {
 
 "use strict";
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   VERSION: () => (/* binding */ VERSION)\n/* harmony export */ });\nconst VERSION = '4.85.4'; // x-release-please-version\n//# sourceMappingURL=version.mjs.map\n\n//# sourceURL=webpack://renderer/./node_modules/openai/version.mjs?");
+eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   VERSION: () => (/* binding */ VERSION)\n/* harmony export */ });\nconst VERSION = '4.86.1'; // x-release-please-version\n//# sourceMappingURL=version.mjs.map\n\n//# sourceURL=webpack://renderer/./node_modules/openai/version.mjs?");
 
 /***/ })
 
