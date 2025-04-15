@@ -298,8 +298,8 @@ class OpenAITranslator {
             const chatCompletion: ChatCompletion =
               await this.client.chat.completions.create({
                 messages: [{ role: 'user', content: messageContent }],
-                model: 'gpt-4-turbo',
-              });
+                model: 'gpt-4o',
+            });
             console.log("chatCompletion:", chatCompletion)
             let result = chatCompletion.choices[0].message.content;
             return result;
