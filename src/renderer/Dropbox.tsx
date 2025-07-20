@@ -55,7 +55,9 @@ export default function Dropbox({ dropComplete }: DropboxProps) {
             {/* 这里放置用于提示用户拖入文件的图标 */}
             <img src={icon} alt="" />
           </div>
-          <div className="drag-and-drop-text">Drag and drop files here to upload</div>
+          <div className="drag-and-drop-text">
+            Drag and drop files here to upload
+          </div>
         </div>
       ) : (
         <div className="dropped-files">
@@ -63,12 +65,10 @@ export default function Dropbox({ dropComplete }: DropboxProps) {
             <img src={fileIcon} alt="" />
           </div>
           <div className="dropped-file-list">
-            {droppedFiles.map((file, index) => (
-              file.name
-            )).join(',')}
+            {droppedFiles.map((file, index) => file.name).join(',')}
           </div>
           <button className="delete-button" onClick={() => handleRemoveFile()}>
-              <img src={closeButton} alt="" />
+            <img src={closeButton} alt="" />
           </button>
         </div>
       )}
